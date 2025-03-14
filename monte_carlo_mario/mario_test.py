@@ -1,56 +1,25 @@
+import gym.wrappers
+import gym.wrappers
+import gym.wrappers.gray_scale_observation
 import gym_super_mario_bros
 from nes_py.wrappers import JoypadSpace
+
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, RIGHT_ONLY, COMPLEX_MOVEMENT
 import gym
+from gym.wrappers import GrayScaleObservation, FrameStack
+
+from stable_baselines3.common.vec_env import VecFrameStack, DummyVecEnv
 
 import cv2
 import numpy as np
 from collections import deque
 import tqdm
+import matplotlib.pyplot as plt
 
 class MonteCarloAgent():
 
     def __init__(self,):
         pass
-
-class FrameStack(gym.Wrapper):
-    
-    def __init__(self, env, num_frames=4):
-        super().__init__(env)
-        self.num_frames = num_frames #4
-        self.frames = deque(maxlen=num_frames)
-        obs_shape = (num_frames, 84, 84)
-        self.observation_space = gym.spaces.Box(low=0, high=1.0, shape=obs_shape)
-
-    def reset(self, **kwargs):
-        obs_info = self.env.reset(**kwargs)
-    
-        
-        if isinstance(obs_info, tuple):  
-            obs, info = obs_info
-        else:  
-            obs, info = obs_info, {}
-        
-        obs = self.convert_frame(obs)
-
-        for _ in range(self.num_frames):
-            self.frames.append(obs)
-
-        return np.array(self.frames), info
-    
-    def step(self, action):
-        
-        state, reward, done, truncated, info = self.env.step(action)
-        state = self.convert_frame(state)
-        self.frames.append(state)
-        return np.array(self.frames), reward, done, truncated, info
-    
-    def convert_frame(self, frame):
-
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        frame = cv2.resize(gray_frame, (84, 84), interpolation=cv2.INTER_AREA)
-
-        return frame / 255.0
 
 
 
@@ -76,16 +45,29 @@ def choose_action(state):
     else:
         return np.argmax(returns.get(state_key, np.zeros(env.action_space.n)))
 
-env = gym_super_mario_bros.make('SuperMarioBros-v3')
+env = gym_super_mario_bros.make('SuperMarioBros-v2')
 env = JoypadSpace(env, RIGHT_ONLY)  
 # env = FrameStack(env, num_frames=4)  
+env = GrayScaleObservation(env, keep_dim=True)
 
+env = FrameStack(env, 4)
+
+
+
+
+
+state = env.reset()
+print(state.shape)
+
+state, reward, done, info = env.step(env.action_space.sample())
+plt.imshow(state.shape[0])
+plt.show()
 
 # obs, info = env.reset()
 # print("Observation shape:", obs.shape)  
 # print(obs[0][0].shape)
-
-num_episodes = 5  
+"""
+num_episodes = 1  
 returns = {}
 
 
@@ -126,6 +108,7 @@ for episode in tqdm.trange(num_episodes):
         state_action_counts[(state_tuple, action)] += 1
         returns[(state_tuple, action)] += total_return
 
+env.close()
 epsilon = 0.0
 
 for episode in range(5):  
@@ -138,3 +121,5 @@ for episode in range(5):
         next_state, reward, done, _ = env.step(action)
         
         env.render()  
+
+env.close()"""
