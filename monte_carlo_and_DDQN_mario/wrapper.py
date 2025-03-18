@@ -147,8 +147,8 @@ class RewardScoreBased(Wrapper):
     def _coin_reward(self, info):
         return int(info['coins'])
     
-    def status(self,info):
-        status = info['status']:
+    def _status(self,info):
+        status = info['status']
         if status == 'tall' or status == 'fireball':
             reward = 5
         else:
@@ -160,7 +160,7 @@ class RewardScoreBased(Wrapper):
         #might be repetitive ngl, TODO: look at source, does get reward only occur is successful stage clear
         #removed death penalty attmept to encourage riskier but faster methods
         #lower learning rate, as it might be too unstable
-        return self._score_reward(info) + self._coin_reward(info)
+        return self._score_reward(info) + self._coin_reward(info) + self._status(info
     
     # TODO: add status, like power up into the reward function maybe
     
