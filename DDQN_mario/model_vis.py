@@ -12,17 +12,22 @@ from gym_super_mario_bros.actions import SIMPLE_MOVEMENT, RIGHT_ONLY, COMPLEX_MO
 from nes_py.wrappers import JoypadSpace
 import numpy as np
 
+#load the agent
 def load_agent(model_path):
     agent = Agent(input_dims=env.observation_space.shape, num_actions=env.action_space.n)
     agent.load_model(model_path)
+
+    #set very minimal exploration
     agent.epsilon = 0.1
     agent.eps_min = 0.0
     agent.eps_decay = 0.0
     return agent
 
+#evaluate agent takes the agent and runs for certain amount of episodes 
 def evaluate_agent(agent, num_episodes=5):
     rewards = []
     
+
     for _ in range(num_episodes):
         state, _ = env.reset()
         done = False
@@ -44,6 +49,7 @@ def evaluate_agent(agent, num_episodes=5):
 model_folder = 'models\\2025-03-18-17_40_23'
 model_files = [f for f in os.listdir(model_folder) if f.endswith(".pt")]
 
+#using this to make sure that the x axis is in order of trials created and not string
 model_paths = [os.path.join(model_folder, f) for f in model_files]
 creation_times = [os.path.getctime(m) for m in model_paths]
 
@@ -51,8 +57,9 @@ sorted_indices = sorted(range(len(model_files)), key=lambda i: creation_times[i]
 model_files_sorted = [model_files[i] for i in sorted_indices]
 print(model_files_sorted)
 
+
+#init env
 performance = []
-import cv2
 env = gym_super_mario_bros.make('SuperMarioBros-v2',apply_api_compatibility=True, render_mode='rgb_array')
 env = JoypadSpace(env, RIGHT_ONLY)
 env = wrapper.apply_wrappers(env) 
