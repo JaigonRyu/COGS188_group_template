@@ -47,61 +47,67 @@ class RewardMoveRight(Wrapper):
     def __init__(self, env, skip):
         super().__init__(env)
         self.skip = skip
-        
-    def _x_reward(self):
-        #x delta changes alot when death happens
-        print(self.env._x_position_last)
-        if self.env.unwrapped._x_position - self.env.unwrapped._x_position_last < -5 or self.env.unwrapped._x_position - self.env.unwrapped._x_position_last > 5:
-            return 0
-        #heavily promte moving foward
-        if self.env.unwrapped._x_position > self.env.unwrapped._x_position_last:
-            _reward = 5
-        #punish moving back, make it run foward asap
-        elif self.env.unwrapped._x_position_last >  self.env.unwrapped._x_position:
-            reward  = - 10
-        self.env.unwrapped._x_position_last = self.env.unwrapped._x_position
-        return _reward
+
+
+        self.last_pos = 40
     
-    def _time_penalty(self):
+    def _x_reward(self, info):
+
+        x_pos = info['x_pos']
+
+        if x_pos > self.last_pos:
+            reward = 5  # Reward for moving forward
+        else:
+            reward = -10  # Penalize moving backward
+        
+        # Update last known X position
+        self.last_pos = x_pos
+        
+        return reward
+
+    def _time_penalty(self, info):
         vals = {
     range(0, 101): -1000,
-    range(101, 201): 50,
-    range(201, 301): 100,
-    range(301, 401): 200,
-    #everythiongh [past this is unnesssesary]
-    range(401, 501): 0,
-    range(501, 601): 20,
-    range(601, 701): 40,
-    range(701, 801): 75,
-    range(801, 901): 100,
-    range(901, 1000): 200,
-}       
-        # _reward = vals(self.env.unwrapped._time)
-        _reward = next(v for k, v in vals.items() if self.env.unwrapped._time in k)
-        return _reward
 
-    def _get_reward(self):
+    range(101, 201): 25,
+    range(201, 301): 50,
+    range(301, 401): 100,
+    range(401, 501): 100,
+    range(501, 601): 200,
+    range(601, 701): 200,
+    range(701, 801): 200,
+    range(801, 901): 200,
+}       
+
+        _time = info['time']
+        _reward = next((v for k, v in vals.items() if _time in k), 0)  # Default to 0 if not found
+        return _reward
+    
+    def _get_reward(self, info):
         """Return the reward after a step occurs."""
         #might be repetitive ngl, TODO: look at source, does get reward only occur is successful stage clear
         #removed death penalty attmept to encourage riskier but faster methods
         #lower learning rate, as it might be too unstable
-        
-        return self._x_reward() + self._time_penalty() + 1000
 
+
+        return self._x_reward(info) + self._time_penalty(info)
 
     def step(self, action):
+        x_last = 40
         total_reward = 0.0 
         done = False
+        #could do a info['flag] false =- reward
         for _ in range(self.skip):
-
-            next_state, _, done, trunc, info = self.env.step(action) 
-
-            custom_reward = self._get_reward()
+            
+            next_state, _ , done, trunc, info = self.env.step(action) 
+            
+            custom_reward = self._get_reward(info)
             total_reward += custom_reward
             if done:
                 break
         
         return next_state, total_reward, done, trunc, info
+
 
 
 def apply_wrappers_move_right(env):
@@ -117,7 +123,7 @@ def apply_wrappers_move_right(env):
 
 class RewardScoreBased(Wrapper):
     """ based on score, coins, power ups"""
-    def __init__(self, env, skip):
+    def __init__(self, env, skip = 4):
         super().__init__(env)
         self.skip = skip
         self.lost_pos_x = 40
@@ -141,10 +147,10 @@ class RewardScoreBased(Wrapper):
         _reward = next(v for k, v in vals.items() if score in k)
         return _reward
     
-    def _coin_reward(self, info):
-        return int(info['coins'])
-    
-    def _status(self,info):
+    def _coin_reward(self):
+        return int(self.env.unwrapped._coins)
+
+    def status(self,info):
         status = info['status']
         if status == 'tall' or status == 'fireball':
             reward = 5
@@ -157,8 +163,9 @@ class RewardScoreBased(Wrapper):
         #might be repetitive ngl, TODO: look at source, does get reward only occur is successful stage clear
         #removed death penalty attmept to encourage riskier but faster methods
         #lower learning rate, as it might be too unstable
-        return self._score_reward(info) + self._coin_reward(info)  + self._status(info)
-    
+
+        return self._score_reward(info) + self._coin_reward(info) + self.status(info)
+
     # TODO: add status, like power up into the reward function maybe
     
     def step(self, action):
@@ -194,7 +201,7 @@ class RewardAntiDeath(Wrapper):
         self.skip = skip
 
     def _death_penatly(self):
-        if self.env.unwrapped._is_dying or self.env.unwerapped._is_dead:
+        if self.env.unwrapped._is_dying or self.env.unwrapped._is_dead:
             return -50
         
         return 0
